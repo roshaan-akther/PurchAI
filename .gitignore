@@ -92,5 +92,3 @@ coverage/
 *.seed
 *.pid.lock
 
-# Subdirectories with their own git repos
-webapp/
