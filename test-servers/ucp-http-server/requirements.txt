@@ -1,0 +1,4 @@
+ucp-sdk
+fastapi
+uvicorn[standard]
+httpx

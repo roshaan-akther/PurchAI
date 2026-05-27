@@ -1,0 +1,8 @@
+sentence-transformers
+faiss-cpu
+torch
+fastapi
+uvicorn
+pydantic
+numpy
+structlog

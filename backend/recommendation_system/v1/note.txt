@@ -1,0 +1,1 @@
+this model created with LightFM, this is not ideal for the workload cux its being a general model while the W-ALS is specifalized model without feature engneering nd specialized fo rthis usecase. 

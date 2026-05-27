@@ -1,0 +1,252 @@
+# LightFM Recommendation System Implementation Plan
+
+## System Architecture
+
+```
+Data Flow:
+Raw JSON → Preprocessing → Feature Engineering → LightFM Dataset → Training → Model → Inference
+```
+
+## Directory Structure
+
+```
+backend/reco_sys/
+├── datasets/                    # Input data
+│   ├── synthetic_users.json
+│   ├── synthetic_purchases.json
+│   └── generation_stats.json
+├── data/                        # Data loading & preprocessing
+│   ├── __init__.py
+│   ├── loader.py               # Load JSON data
+│   └── preprocessor.py         # Clean & normalize data
+├── features/                   # Feature engineering
+│   ├── __init__.py
+│   ├── item_features.py        # Extract item features
+│   └── user_features.py        # Extract user features
+├── model/                       # Model training & persistence
+│   ├── __init__.py
+│   ├── dataset_builder.py      # Build LightFM dataset
+│   ├── trainer.py              # Train LightFM model
+│   └── persistence.py          # Save/load model
+├── inference/                   # Inference
+│   ├── __init__.py
+│   └── recommender.py          # Generate recommendations
+├── train/                       # Training outputs
+│   ├── lightfm_model.pkl
+│   ├── lightfm_dataset.pkl
+│   └── training_log.txt
+├── config.py                    # Configuration
+└── main.py                      # Entry point
+```
+
+## Implementation Steps
+
+### Step 1: Configuration (config.py)
+**Purpose:** Centralize all configuration constants
+
+**Content:**
+- File paths (datasets, models)
+- Model hyperparameters (no_components, learning_rate, epochs)
+- Feature binning thresholds
+- Training parameters (early stopping patience)
+
+**Time:** 5 minutes
+
+### Step 2: Data Preprocessing (data/preprocessor.py)
+**Purpose:** Clean and normalize raw data
+
+**Functions:**
+- `clean_price(price_str)`: Convert "2,999" → 2999
+- `clean_rating(rating_str)`: Convert "3.9" → 3.9
+- `normalize_brand(brand)`: Normalize brand names
+- `normalize_category(category)`: Normalize categories
+- `clean_product(product)`: Clean single product dict
+- `filter_products(products)`: Filter out invalid products
+- `bin_price(price)`: Bin price into ranges
+- `bin_rating(rating)`: Bin rating into ranges
+
+**Time:** 15 minutes
+
+### Step 3: Data Loading (data/loader.py)
+**Purpose:** Load JSON data with validation
+
+**Functions:**
+- `load_products(path)`: Stream products (generator)
+- `load_users(path)`: Load users
+- `load_interactions(path)`: Load interactions
+- `load_and_clean_products(path)`: Load + clean products
+- `load_and_validate_interactions(path, valid_product_ids)`: Load + validate
+
+**Time:** 10 minutes
+
+### Step 4: Item Features (features/item_features.py)
+**Purpose:** Extract features from products
+
+**Functions:**
+- `extract_item_features(product)`: Extract features from product
+- `get_all_item_features(products)`: Get all unique item features
+
+**Features:**
+- brand: {brand_name}
+- category: {category}
+- sub_category: {sub_category}
+- price_range: {0-500, 500-1000, 1000-2000, 2000-5000, 5000+}
+- rating: {very_low, low, medium_low, medium, high, very_high}
+
+**Time:** 10 minutes
+
+### Step 5: User Features (features/user_features.py)
+**Purpose:** Extract features from users
+
+**Functions:**
+- `extract_user_features(user)`: Extract features from user
+- `get_all_user_features(users)`: Get all unique user features
+
+**Features:**
+- category: {primary_category}
+- sub_category: {primary_sub_category}
+- price_range: {low, medium, high}
+- frequency: {low, medium, high}
+- brand: {preferred_brands}
+
+**Time:** 10 minutes
+
+### Step 6: Dataset Builder (model/dataset_builder.py)
+**Purpose:** Build LightFM dataset from raw data
+
+**Functions:**
+- `build_dataset(users, products, interactions)`: Build complete dataset
+- `build_interactions_matrix(dataset, interactions)`: Build interactions
+- `build_item_features_matrix(dataset, products)`: Build item features
+- `build_user_features_matrix(dataset, users)`: Build user features
+
+**Returns:**
+- dataset (LightFM Dataset object)
+- interactions_matrix (sparse matrix)
+- item_features (sparse matrix)
+- user_features (sparse matrix)
+
+**Time:** 20 minutes
+
+### Step 7: Model Trainer (model/trainer.py)
+**Purpose:** Train LightFM model with early stopping
+
+**Functions:**
+- `train_model(interactions, item_features, user_features, config)`: Train model
+- `evaluate_model(model, interactions, k)`: Evaluate precision@k
+- `early_stopping_check(current_precision, best_precision, patience)`: Check early stopping
+
+**Training Loop:**
+- For each epoch:
+  - Fit model for 1 epoch
+  - Evaluate precision@k
+  - Save if best
+  - Stop if no improvement for N epochs
+
+**Time:** 15 minutes
+
+### Step 8: Model Persistence (model/persistence.py)
+**Purpose:** Save/load model and dataset
+
+**Functions:**
+- `save_model(model, path)`: Save model to pickle
+- `load_model(path)`: Load model from pickle
+- `save_dataset(dataset, path)`: Save dataset to pickle
+- `load_dataset(path)`: Load dataset from pickle
+- `save_training_log(log, path)`: Save training log
+
+**Time:** 10 minutes
+
+### Step 9: Recommender (inference/recommender.py)
+**Purpose:** Generate recommendations
+
+**Functions:**
+- `recommend_for_user(model, dataset, user_id, user_features, k)`: Get recommendations
+- `recommend_for_new_user(model, dataset, user_features, k)`: Cold start recommendations
+- `batch_recommend(model, dataset, user_ids, user_features, k)`: Batch recommendations
+
+**Algorithm:**
+1. Get user internal ID
+2. Get all item IDs
+3. Predict scores for all items
+4. Sort by score (descending)
+5. Return top-k
+
+**Time:** 15 minutes
+
+### Step 10: Main Orchestration (main.py)
+**Purpose:** Orchestrate the entire pipeline
+
+**Pipeline:**
+1. Load configuration
+2. Load and clean data
+3. Extract features
+4. Build dataset
+5. Train model
+6. Save model and dataset
+7. Test inference
+8. Log results
+
+**Time:** 20 minutes
+
+## Testing Strategy
+
+### Test 1: Preprocessing Test
+**Goal:** Verify data cleaning works
+**Method:** Load 100 products, clean them, check output
+**Expected:** All prices as integers, ratings as floats, no missing pids
+
+### Test 2: Dataset Builder Test
+**Goal:** Verify LightFM dataset builds correctly
+**Method:** Build dataset with 10 users, 100 products, 50 interactions
+**Expected:** No errors, correct matrix shapes
+
+### Test 3: Training Test
+**Goal:** Verify training completes
+**Method:** Train with small dataset (10 users, 100 products)
+**Expected:** Training completes, precision improves
+
+### Test 4: Inference Test
+**Goal:** Verify recommendations generate
+**Method:** Get recommendations for user_0
+**Expected:** Returns 10 valid product IDs
+
+## Execution Order
+
+1. Create directory structure
+2. Implement config.py
+3. Implement data/preprocessor.py
+4. Implement data/loader.py
+5. Implement features/item_features.py
+6. Implement features/user_features.py
+7. Implement model/dataset_builder.py
+8. Implement model/trainer.py
+9. Implement model/persistence.py
+10. Implement inference/recommender.py
+11. Implement main.py
+12. Test preprocessing (subset)
+13. Test dataset builder (subset)
+14. Test training (subset)
+15. Run full training (1000 users, 1.9M products)
+16. Test inference (sample users)
+
+## Time Estimates
+
+- Implementation: 2 hours
+- Testing: 30 minutes
+- Full training: 15-20 minutes
+- Total: 2.5-3 hours
+
+## Hardware Requirements
+
+- CPU: i5-1135G7 (4 cores, 8 threads)
+- RAM: 19GB (need ~5GB during training)
+- Disk: ~10GB for models and data
+
+## Success Criteria
+
+- ✅ Model trains without errors
+- ✅ Precision@k improves during training
+- ✅ Inference returns valid product IDs
+- ✅ Model saves and loads correctly
+- ✅ Recommendations are relevant (manual inspection)

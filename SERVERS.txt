@@ -1,0 +1,29 @@
+PurchAI Servers Startup
+
+Start All Servers
+
+1. Recommendation System (port 8010):
+   cd backend/recommendation_system/v2
+   python api.py
+
+2. Search System (port 8020):
+   cd backend/search_system
+   python api.py
+
+3. Webapp (port 3000):
+   cd webapp
+   pnpm run dev
+
+4. UCP HTTP Server (port 8030):
+   cd test-servers/ucp-http-server
+   python main.py
+
+5. Ollama (port 11434):
+   ollama serve
+
+Port Summary
+- Recommendation API: http://localhost:8010
+- Search API: http://localhost:8020
+- Webapp: http://localhost:3000
+- UCP Server: http://localhost:8030
+- Ollama: http://localhost:11434
