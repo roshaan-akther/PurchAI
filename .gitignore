@@ -92,10 +92,5 @@ coverage/
 *.seed
 *.pid.lock
 
-# Large data files
-*.pkl
-*.bin
-backend/recommendation_system/v2/datasets/*.json
-
 # Subdirectories with their own git repos
 webapp/
